@@ -1,6 +1,6 @@
 import Foundation
 
-class TapTempoEngine {
+class TaptiqueEngine {
     // Configuration
     private let maxTapInterval: TimeInterval = 2.0  // Reset if no tap for 2 seconds
     private let minTapsForBPM = 2                   // Need at least 2 taps to calculate

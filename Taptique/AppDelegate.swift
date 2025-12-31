@@ -1,17 +1,51 @@
 import AppKit
 import SwiftUI
+import ServiceManagement
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
-    private var tapTempoEngine = TapTempoEngine()
+    private var taptiqueEngine = TaptiqueEngine()
     private var popover: NSPopover!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupMenuBar()
+        enableLaunchAtLoginOnFirstRun()
+    }
+
+    private func enableLaunchAtLoginOnFirstRun() {
+        let hasLaunchedBeforeKey = "hasLaunchedBefore"
+        let hasLaunchedBefore = UserDefaults.standard.bool(forKey: hasLaunchedBeforeKey)
+
+        if !hasLaunchedBefore {
+            // First launch - enable launch at login by default
+            if #available(macOS 13.0, *) {
+                do {
+                    try SMAppService.mainApp.register()
+                } catch {
+                    print("Failed to enable launch at login on first run: \(error)")
+                }
+            }
+            UserDefaults.standard.set(true, forKey: hasLaunchedBeforeKey)
+
+            // Show first-launch tip
+            showFirstLaunchTip()
+        }
+    }
+
+    private func showFirstLaunchTip() {
+        let alert = NSAlert()
+        alert.messageText = "Welcome to Taptique!"
+        alert.informativeText = "Click the metronome icon in your menu bar to tap a tempo.\n\nTip: Hold Command (⌘) and drag the icon to reposition it in your menu bar. The further right it's positioned, the less likely it is to be hidden by other apps!"
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "Got it!")
+        alert.runModal()
     }
 
     private func setupMenuBar() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+
+        // Help macOS remember the position
+        statusItem.autosaveName = "com.musiquela.taptique.statusitem"
 
         if let button = statusItem.button {
             updateButtonDisplay(button: button, bpm: nil)
@@ -105,9 +139,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             showContextMenu()
         } else {
             // Left click - tap tempo
-            tapTempoEngine.tap()
+            taptiqueEngine.tap()
 
-            if let bpm = tapTempoEngine.currentBPM {
+            if let bpm = taptiqueEngine.currentBPM {
                 updateButtonDisplay(button: sender, bpm: bpm)
             }
         }
@@ -116,7 +150,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func showContextMenu() {
         let menu = NSMenu()
 
-        if let bpm = tapTempoEngine.currentBPM {
+        if let bpm = taptiqueEngine.currentBPM {
             let bpmItem = NSMenuItem(title: "Current: \(bpm) BPM", action: nil, keyEquivalent: "")
             bpmItem.isEnabled = false
             menu.addItem(bpmItem)
@@ -125,15 +159,50 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         menu.addItem(NSMenuItem(title: "Reset", action: #selector(resetTempo), keyEquivalent: "r"))
         menu.addItem(NSMenuItem.separator())
-        menu.addItem(NSMenuItem(title: "Quit Tap Tempo", action: #selector(quitApp), keyEquivalent: "q"))
+
+        // Launch at Login toggle
+        let launchAtLoginItem = NSMenuItem(
+            title: "Launch at Login",
+            action: #selector(toggleLaunchAtLogin),
+            keyEquivalent: ""
+        )
+        launchAtLoginItem.state = isLaunchAtLoginEnabled ? .on : .off
+        menu.addItem(launchAtLoginItem)
+
+        menu.addItem(NSMenuItem.separator())
+        menu.addItem(NSMenuItem(title: "Quit Taptique", action: #selector(quitApp), keyEquivalent: "q"))
 
         statusItem.menu = menu
         statusItem.button?.performClick(nil)
         statusItem.menu = nil // Remove menu so clicks work again
     }
 
+    // MARK: - Launch at Login
+
+    private var isLaunchAtLoginEnabled: Bool {
+        if #available(macOS 13.0, *) {
+            return SMAppService.mainApp.status == .enabled
+        } else {
+            return false
+        }
+    }
+
+    @objc private func toggleLaunchAtLogin() {
+        if #available(macOS 13.0, *) {
+            do {
+                if isLaunchAtLoginEnabled {
+                    try SMAppService.mainApp.unregister()
+                } else {
+                    try SMAppService.mainApp.register()
+                }
+            } catch {
+                print("Failed to toggle launch at login: \(error)")
+            }
+        }
+    }
+
     @objc private func resetTempo() {
-        tapTempoEngine.reset()
+        taptiqueEngine.reset()
         if let button = statusItem.button {
             updateButtonDisplay(button: button, bpm: nil)
         }

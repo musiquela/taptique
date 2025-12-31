@@ -15,9 +15,9 @@
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>Tap Tempo</string>
+    <string>Taptique</string>
     <key>CFBundleDisplayName</key>
-    <string>Tap Tempo</string>
+    <string>Taptique: Menubar Tap Tempo</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
